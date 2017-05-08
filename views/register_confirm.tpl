@@ -12,14 +12,14 @@ University of Chicago
   </div>
 
   %if success:
+    <div class="row">
+      <p>Thank you for registering! Please <a href="/login">click here</a> to login and start using the GAS.</p>
+    </div>
+  %else:
     <div class="alert alert-danger">
       <strong>Could not confirm registration.</strong><br />
       Error message received: {{error_message}}
     </div>
-  %else:
-  	<div class="row">
-      <p>Thank you for registering! Please <a href="/login">click here</a> to login and start using the GAS.</p>
-  	</div>
   %end
 
 </div> <!-- container -->
