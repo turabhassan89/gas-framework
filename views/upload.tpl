@@ -16,6 +16,7 @@ University of Chicago
     <form role="form" action="http://gas-inputs.s3.amazonaws.com/" method="post" enctype="multipart/form-data">
 			<input type="hidden" name="key" value="{{s3_key_name}}~${filename}" />
 			<input type="hidden" name="AWSAccessKeyId" value={{aws_access_key_id}} />
+			<input type="hidden" name="x-amz-security-token" value={{aws_session_token}} />
 			<input type="hidden" name="acl" value={{acl}} />
 			<input type="hidden" name="x-amz-server-side-encryption" value={{encryption}} />
 			<input type="hidden" name="success_action_redirect" value={{redirect_url}} />
