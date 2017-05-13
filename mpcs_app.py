@@ -55,20 +55,20 @@ Registration form
 def register():
   log.info(request.url)
   return template(request.app.config['mpcs.env.templates'] + 'register',
-                  auth=auth, name="", email="", username="", 
-                  alert=False, success=True, error_message=None)
+  	auth=auth, name="", email="", username="", 
+  	alert=False, success=True, error_message=None)
 
 @route('/register', method='POST', name="register_submit")
 def register_submit():
-  try:
-    auth.register(description=request.POST.get('name').strip(),
-		  username=request.POST.get('username').strip(),
-		  password=request.POST.get('password').strip(),
-		  email_addr=request.POST.get('email_address').strip(),
-		  role="free_user")
-  except Exception, error:
-    return template(request.app.config['mpcs.env.templates'] + 'register', 
-		    auth=auth, alert=True, success=False, error_message=error)	
+	try:
+		auth.register(description=request.POST.get('name').strip(),
+									username=request.POST.get('username').strip(),
+									password=request.POST.get('password').strip(),
+									email_addr=request.POST.get('email_address').strip(),
+									role="free_user")
+	except Exception, error:
+		return template(request.app.config['mpcs.env.templates'] + 'register', 
+			auth=auth, alert=True, success=False, error_message=error)	
 
 	return template(request.app.config['mpcs.env.templates'] + 'register', 
 		auth=auth, alert=True, success=True, error_message=None)
@@ -249,5 +249,6 @@ Display the log file for an annotation job
 @route('/annotations/<job_id>/log', method='GET', name="annotation_log")
 def view_annotation_log(job_id):
   pass
+
 
 ### EOF
