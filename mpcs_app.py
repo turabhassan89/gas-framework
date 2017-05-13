@@ -43,8 +43,8 @@ Home page
 '''
 @route('/', method='GET', name="home")
 def home_page():
-	log.info(request.url)
-	return template(request.app.config['mpcs.env.templates'] + 'home', auth=auth)
+  log.info(request.url)
+  return template(request.app.config['mpcs.env.templates'] + 'home', auth=auth)
 
 '''
 *******************************************************************************
@@ -55,35 +55,35 @@ Registration form
 def register():
   log.info(request.url)
   return template(request.app.config['mpcs.env.templates'] + 'register',
-  	auth=auth, name="", email="", username="", 
-  	alert=False, success=True, error_message=None)
+    auth=auth, name="", email="", username="", 
+    alert=False, success=True, error_message=None)
 
 @route('/register', method='POST', name="register_submit")
 def register_submit():
-	try:
-		auth.register(description=request.POST.get('name').strip(),
-									username=request.POST.get('username').strip(),
-									password=request.POST.get('password').strip(),
-									email_addr=request.POST.get('email_address').strip(),
-									role="free_user")
-	except Exception, error:
-		return template(request.app.config['mpcs.env.templates'] + 'register', 
-			auth=auth, alert=True, success=False, error_message=error)	
+  try:
+    auth.register(description=request.POST.get('name').strip(),
+                  username=request.POST.get('username').strip(),
+                  password=request.POST.get('password').strip(),
+                  email_addr=request.POST.get('email_address').strip(),
+                  role="free_user")
+  except Exception, error:
+    return template(request.app.config['mpcs.env.templates'] + 'register', 
+      auth=auth, alert=True, success=False, error_message=error)  
 
-	return template(request.app.config['mpcs.env.templates'] + 'register', 
-		auth=auth, alert=True, success=True, error_message=None)
+  return template(request.app.config['mpcs.env.templates'] + 'register', 
+    auth=auth, alert=True, success=True, error_message=None)
 
 @route('/register/<reg_code>', method='GET', name="register_confirm")
 def register_confirm(reg_code):
-	log.info(request.url)
-	try:
-		auth.validate_registration(reg_code)
-	except Exception, error:
-		return template(request.app.config['mpcs.env.templates'] + 'register_confirm',
-			auth=auth, success=False, error_message=error)
+  log.info(request.url)
+  try:
+    auth.validate_registration(reg_code)
+  except Exception, error:
+    return template(request.app.config['mpcs.env.templates'] + 'register_confirm',
+      auth=auth, success=False, error_message=error)
 
-	return template(request.app.config['mpcs.env.templates'] + 'register_confirm',
-		auth=auth, success=True, error_message=None)
+  return template(request.app.config['mpcs.env.templates'] + 'register_confirm',
+    auth=auth, success=True, error_message=None)
 
 '''
 *******************************************************************************
@@ -92,26 +92,26 @@ Login, logout, and password reset forms
 '''
 @route('/login', method='GET', name="login")
 def login():
-	log.info(request.url)
-	redirect_url = "/annotations"
-	# If the user is trying to access a protected URL, go there after auhtenticating
-	if request.query.redirect_url.strip() != "":
-		redirect_url = request.query.redirect_url
+  log.info(request.url)
+  redirect_url = "/annotations"
+  # If the user is trying to access a protected URL, go there after auhtenticating
+  if request.query.redirect_url.strip() != "":
+    redirect_url = request.query.redirect_url
 
-	return template(request.app.config['mpcs.env.templates'] + 'login', 
-		auth=auth, redirect_url=redirect_url, alert=False)
+  return template(request.app.config['mpcs.env.templates'] + 'login', 
+    auth=auth, redirect_url=redirect_url, alert=False)
 
 @route('/login', method='POST', name="login_submit")
 def login_submit():
-	auth.login(request.POST.get('username'),
-						 request.POST.get('password'),
-						 success_redirect=request.POST.get('redirect_url'),
-						 fail_redirect='/login')
+  auth.login(request.POST.get('username'),
+             request.POST.get('password'),
+             success_redirect=request.POST.get('redirect_url'),
+             fail_redirect='/login')
 
 @route('/logout', method='GET', name="logout")
 def logout():
-	log.info(request.url)
-	auth.logout(success_redirect='/login')
+  log.info(request.url)
+  auth.logout(success_redirect='/login')
 
 
 '''
@@ -165,6 +165,9 @@ def upload_input_file():
 
   # Use the boto session object only to get AWS credentials
   session = botocore.session.get_session()
+  aws_access_key_id = str(session.get_credentials().access_key)
+  aws_secret_access_key = str(session.get_credentials().secret_key)
+  aws_session_token = str(session.get_credentials().token)
 
   # Define policy conditions
   bucket_name = request.app.config['mpcs.aws.s3.inputs_bucket']
@@ -190,22 +193,22 @@ def upload_input_file():
       ["starts-with","$key", key_name],
       ["starts-with", "$success_action_redirect", redirect_url],
       {"x-amz-server-side-encryption": encryption},
-      {"x-amz-security-token": credentials['SessionToken']},
+      {"x-amz-security-token": aws_session_token},
       {"acl": acl}]})
 
   # Encode the policy document - ensure no whitespace before encoding
   policy = base64.b64encode(policy_document.translate(None, string.whitespace))
 
   # Sign the policy document using the AWS secret key
-  signature = base64.b64encode(hmac.new(str(session.get_credentials().secret_key), policy, hashlib.sha1).digest())
+  signature = base64.b64encode(hmac.new(aws_secret_access_key, policy, hashlib.sha1).digest())
 
   # Render the upload form
   # Must pass template variables for _all_ the policy elements
   # (in addition to the AWS access key and signed policy from above)
   return template(request.app.config['mpcs.env.templates'] + 'upload',
     auth=auth, bucket_name=bucket_name, s3_key_name=key_name,
-    aws_access_key_id=session.get_credentials().access_key,     
-    aws_session_token=session.get_credentials().token, redirect_url=redirect_url,
+    aws_access_key_id=aws_access_key_id,     
+    aws_session_token=aws_session_token, redirect_url=redirect_url,
     encryption=encryption, acl=acl, policy=policy, signature=signature)
 
 
