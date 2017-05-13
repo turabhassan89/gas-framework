@@ -158,7 +158,59 @@ uploading an input file using the policy document
 '''
 @route('/annotate', method='GET', name="annotate")
 def upload_input_file():
-  pass
+  log.info(request.url)
+
+  # Check that user is authenticated
+  auth.require(fail_redirect='/login?redirect_url=' + request.url)
+
+  # NOTE: Using STS to get temporary AWS credentials via instance role
+  sts_client = boto3.client('sts')
+  assumedRoleObject = sts_client.assume_role(
+  	RoleArn="arn:aws:iam::127134666975:role/instance_role_instructor",
+    RoleSessionName="AssumedRoleSession")
+  credentials = assumedRoleObject['Credentials']
+  
+  # Define policy conditions
+  bucket_name = request.app.config['mpcs.aws.s3.inputs_bucket']
+  encryption = request.app.config['mpcs.aws.s3.encryption']
+  acl = request.app.config['mpcs.aws.s3.acl']
+
+  # Generate unique ID to be used as S3 key (name)
+  key_name = request.app.config['mpcs.aws.s3.key_prefix'] + str(uuid.uuid4())
+
+  # Redirect to a route that will call the annotator
+  redirect_url = str(request.url) + "/job"
+
+  # Define the S3 policy doc to allow upload via form POST
+  # The only required elements are "expiration", and "conditions"
+  # must include "bucket", "key" and "acl"; other elements optional
+  # NOTE: Now must inlcude "x-amz-security-token" since we're
+  # using temporary credentials via instance roles
+  policy_document = str({
+    "expiration": (datetime.datetime.utcnow() + 
+      datetime.timedelta(hours=24)).strftime("%Y-%m-%dT%H:%M:%SZ"),
+    "conditions": [
+      {"bucket": bucket_name},
+      ["starts-with","$key", key_name],
+      ["starts-with", "$success_action_redirect", redirect_url],
+      {"x-amz-server-side-encryption": encryption},
+      {"x-amz-security-token": credentials['SessionToken']},
+      {"acl": acl}]})
+
+  # Encode the policy document - ensure no whitespace before encoding
+  policy = base64.b64encode(policy_document.translate(None, string.whitespace))
+
+  # Sign the policy document using the AWS secret key
+  signature = base64.b64encode(hmac.new(str(credentials['SecretAccessKey']), policy, hashlib.sha1).digest())
+
+  # Render the upload form
+  # Must pass template variables for _all_ the policy elements
+  # (in addition to the AWS access key and signed policy from above)
+  return template(request.app.config['mpcs.env.templates'] + 'upload',
+    auth=auth, bucket_name=bucket_name, s3_key_name=key_name,
+    aws_access_key_id=credentials['AccessKeyId'], 
+    aws_session_token=credentials['SessionToken'], redirect_url=redirect_url,
+    encryption=encryption, acl=acl, policy=policy, signature=signature)
 
 
 '''
