@@ -163,13 +163,9 @@ def upload_input_file():
   # Check that user is authenticated
   auth.require(fail_redirect='/login?redirect_url=' + request.url)
 
-  # NOTE: Using STS to get temporary AWS credentials via instance role
-  sts_client = boto3.client('sts')
-  assumedRoleObject = sts_client.assume_role(
-  	RoleArn="arn:aws:iam::127134666975:role/instance_role_instructor",
-    RoleSessionName="AssumedRoleSession")
-  credentials = assumedRoleObject['Credentials']
-  
+  # Use the boto session object only to get AWS credentials
+  session = botocore.session.get_session()
+
   # Define policy conditions
   bucket_name = request.app.config['mpcs.aws.s3.inputs_bucket']
   encryption = request.app.config['mpcs.aws.s3.encryption']
@@ -184,7 +180,7 @@ def upload_input_file():
   # Define the S3 policy doc to allow upload via form POST
   # The only required elements are "expiration", and "conditions"
   # must include "bucket", "key" and "acl"; other elements optional
-  # NOTE: Now must inlcude "x-amz-security-token" since we're
+  # NOTE: We also must inlcude "x-amz-security-token" since we're
   # using temporary credentials via instance roles
   policy_document = str({
     "expiration": (datetime.datetime.utcnow() + 
@@ -201,15 +197,15 @@ def upload_input_file():
   policy = base64.b64encode(policy_document.translate(None, string.whitespace))
 
   # Sign the policy document using the AWS secret key
-  signature = base64.b64encode(hmac.new(str(credentials['SecretAccessKey']), policy, hashlib.sha1).digest())
+  signature = base64.b64encode(hmac.new(str(session.get_credentials().secret_key), policy, hashlib.sha1).digest())
 
   # Render the upload form
   # Must pass template variables for _all_ the policy elements
   # (in addition to the AWS access key and signed policy from above)
   return template(request.app.config['mpcs.env.templates'] + 'upload',
     auth=auth, bucket_name=bucket_name, s3_key_name=key_name,
-    aws_access_key_id=credentials['AccessKeyId'], 
-    aws_session_token=credentials['SessionToken'], redirect_url=redirect_url,
+    aws_access_key_id=session.get_credentials().access_key,     
+    aws_session_token=session.get_credentials().token, redirect_url=redirect_url,
     encryption=encryption, acl=acl, policy=policy, signature=signature)
 
 
