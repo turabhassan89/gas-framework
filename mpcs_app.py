@@ -250,5 +250,4 @@ Display the log file for an annotation job
 def view_annotation_log(job_id):
   pass
 
-
 ### EOF
