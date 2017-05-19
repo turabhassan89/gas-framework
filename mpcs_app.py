@@ -43,7 +43,6 @@ Home page
 '''
 @route('/', method='GET', name="home")
 def home_page():
-  log.info(request.url)
   return template(request.app.config['mpcs.env.templates'] + 'home', auth=auth)
 
 '''
